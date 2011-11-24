@@ -8,9 +8,13 @@ Gem::Specification.new do |s|
   s.authors     = ["Dustin Morrill"]
   s.email       = ["morrill@ualberta.ca"]
   s.homepage    = ""
-  s.summary     = %q{TODO: Write a gem summary}
-  s.description = %q{TODO: Write a gem description}
+  s.summary     = %q{ACPC Poker Player Proxy}
+  s.description = %q{A smart proxy for a poker player that connects to the ACPC Dealer and manages match state data.}
 
+  s.add_development_dependency 'acpc_poker_types'
+  s.add_development_dependency 'acpc_poker_basic_proxy'
+  s.add_development_dependency 'acpc_poker_match_state'
+  
   s.rubyforge_project = "acpc_poker_player_proxy"
 
   s.files         = `git ls-files`.split("\n")
