@@ -61,16 +61,10 @@ class PlayerProxy
       match_state = MatchState.new(first_match_state.game_definition,
                                    first_match_state.match_state_string,
                                    first_match_state.player_names,
-                                   first_match_state.number_of_hands)
-      
-      puts "   PLAYER_PROXY: current_match_snapshot!: first_match_state: #{first_match_state}, current_match_state: #{current_match_state}"
-      
+                                   first_match_state.number_of_hands)      
       @match_snapshots.rest.each do |previous_match_states|
          match_state.update! previous_match_states.match_state_string
       end
-      puts "   PLAYER_PROXY: current_match_snapshot!: @match_snapshots: #{@match_snapshots}"
-      puts "   PLAYER_PROXY: current_match_snapshot!: current_match_state: #{current_match_state}, match_state: #{match_state}"
-      
       match_state
    end
    
@@ -78,13 +72,7 @@ class PlayerProxy
    
    def update_match_state!
       next_match_state = take_match_snapshot.update!(next_match_state_string)
-      
-      puts "   PLAYER_PROXY: update_match_state!: next_match_state: #{next_match_state}, @match_snapshots: #{@match_snapshots}"
-      
       @match_snapshots << next_match_state
-      
-      puts "   PLAYER_PROXY: update_match_state!: @match_snapshots: #{@match_snapshots}"
-      
       update_match_state! unless (users_turn_to_act? or match_ended?)
    end
    
@@ -95,8 +83,6 @@ class PlayerProxy
    
    # @see MatchState#users_turn_to_act?
    def users_turn_to_act?
-      puts "   PLAYER_PROXY: users_turn_to_act?: current_match_state: #{current_match_state}"
-      
       current_match_state.users_turn_to_act?
    end
    
