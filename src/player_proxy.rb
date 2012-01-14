@@ -68,8 +68,6 @@ class PlayerProxy
       match_state
    end
    
-   
-   
    def update_match_state!
       next_match_state = take_match_snapshot.update!(next_match_state_string)
       @match_snapshots << next_match_state
