@@ -76,7 +76,11 @@ class PlayerProxy
    
    def next_match_state_string
       # @todo This BasicProxy method should have an ! at the end, since it changes its current_match_state
-      @basic_proxy.receive_match_state_string
+      if @match_snapshots
+         @basic_proxy.receive_match_state_string @match_snapshots.last.acting_player_sees_wager?
+      else
+         @basic_proxy.receive_match_state_string
+      end
    end 
    
    # @see MatchState#users_turn_to_act?
