@@ -29,11 +29,15 @@ class PlayerProxy
    attr_reader :match_snapshots
    
    # @param [DealerInformation] dealer_information Information about the dealer to which this bot should connect.
-   # @param [String] game_definition_file_name The name of the file containing the definition of the game, of which, this match is an instance.
+   # @param [GameDefinition, #to_s] game_definition_argument A game definition; either a +GameDefinition+ or the name of the file containing a game definition.
    # @param [String] player_names The names of the players in this match.
    # @param [Integer] number_of_hands The number of hands in this match.
-   def initialize(dealer_information, game_definition_file_name, player_names='user p2', number_of_hands=1)
-      game_definition = GameDefinition.new game_definition_file_name
+   def initialize(dealer_information, game_definition_argument, player_names='user p2', number_of_hands=1)
+      game_definition = if game_definition_argument.kind_of?(GameDefinition)
+         game_definition_argument
+      else
+         GameDefinition.new(game_definition_argument)
+      end
       @basic_proxy = BasicProxy.new dealer_information
       @match_snapshots = [MatchState.new(game_definition, next_match_state_string, player_names.split(/,?\s+/), number_of_hands)]
       
