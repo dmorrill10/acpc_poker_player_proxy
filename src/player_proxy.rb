@@ -53,6 +53,11 @@ class PlayerProxy
       
       update_match_state!
    end
+   
+   # @see MatchState#match_ended?
+   def match_ended?      
+      current_match_state.match_ended?
+   end
       
    private
    
@@ -90,10 +95,5 @@ class PlayerProxy
    # @see MatchState#users_turn_to_act?
    def users_turn_to_act?
       current_match_state.users_turn_to_act?
-   end
-   
-   # @see MatchState#match_ended?
-   def match_ended?      
-      current_match_state.match_ended?
    end
 end
