@@ -25,7 +25,7 @@ class PlayerProxy
    exceptions :match_ended
    
    # @return [Array<MatchState>] Summary of the progression of the match
-   #  in which, this player is participating since this object's instantiation.
+   #  in which, this player is participating, since this object's instantiation.
    attr_reader :match_snapshots
    
    # @param [DealerInformation] dealer_information Information about the dealer to which this bot should connect.
