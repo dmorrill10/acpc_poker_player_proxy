@@ -1,26 +1,25 @@
 require 'bundler/gem_tasks'
 require 'rake'
+require 'rspec/core/rake_task'
 
 require File.expand_path('../lib/acpc_poker_player_proxy/version', __FILE__)
 require File.expand_path('../tasks', __FILE__)
 
 include Tasks
 
-task :build do
-   system "gem build acpc_poker_player_proxy.gemspec"
+RSpec::Core::RakeTask.new(:spec) do |t|
+   ruby_opts = "-w"
 end
 
-# @todo create helper rake task. Not sure if I'm doing this properly.
+task :build => :spec do
+   system "gem build acpc_poker_player_proxy.gemspec"
+end
 
 task :tag => :build do
    tag_gem_version AcpcPokerPlayerProxy::VERSION
 end
 
-desc 'Integrate this gem into a given app'
-task :integrate, :rel_app_path do |t, args|
-   Rake::Task[:tag].invoke
-   gem_name = "acpc_poker_player_proxy-#{AcpcPokerPlayerProxy::VERSION}.gem"
-   integrate_into_app args[:rel_app_path], gem_name
+task :install => :build do
 end
 
 #desc "release gem to gemserver"

@@ -11,9 +11,13 @@ Gem::Specification.new do |s|
   s.summary     = %q{ACPC Poker Player Proxy}
   s.description = %q{A smart proxy for a poker player that connects to the ACPC Dealer and manages match state data.}
 
-  s.add_development_dependency 'acpc_poker_types'
-  s.add_development_dependency 'acpc_poker_basic_proxy'
-  s.add_development_dependency 'acpc_poker_match_state'
+  s.add_dependency 'acpc_poker_types'
+  s.add_dependency 'acpc_poker_basic_proxy'
+  s.add_dependency 'acpc_poker_match_state'
+  
+  s.add_development_dependency 'rspec'
+  s.add_development_dependency 'mocha'
+  s.add_development_dependency 'simplecov'
   
   s.rubyforge_project = "acpc_poker_player_proxy"
 
