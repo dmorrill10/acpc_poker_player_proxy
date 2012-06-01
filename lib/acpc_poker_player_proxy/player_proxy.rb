@@ -57,46 +57,19 @@ class PlayerProxy
       update_match_state!
    end
    
-   # @see MatchState#match_ended?
-   def match_ended?      
-      current_match_state.match_ended?
+   def pop_current_match_state
+      @match_snapshots.pop
    end
-      
+   
    private
    
-   def current_match_state
-      @match_snapshots.last
-   end
-   
-   def take_match_snapshot
-      #first_match_state = @match_snapshots.first
-      #match_state = PlayerProxy.new(first_match_state.game_definition,
-      #                             first_match_state.match_state_string,
-      #                             first_match_state.player_names,
-      #                             first_match_state.number_of_hands)      
-      #@match_snapshots.rest.each do |previous_match_states|
-      #   match_state.update! previous_match_states.match_state_string
-      #end
-      #match_state
-   end
-   
    def update_match_state!
-      next_match_state = take_match_snapshot.update!(next_match_state_string)
-      @match_snapshots << next_match_state
-      update_match_state! unless (users_turn_to_act? or match_ended?)
-   end
-   
-   def next_match_state_string
-      # @todo This BasicProxy method should have an ! at the end, since it changes its current_match_state
-      if @match_snapshots
-         @basic_proxy.receive_match_state_string @match_snapshots.last.acting_player_sees_wager?
-      else
-         @basic_proxy.receive_match_state_string
+      # @todo Does this work?
+      @match_snapshots << Marshal::load(Marshal.dump(@match_snapshots.last))
+      @match_snapshots.last.update!(@basic_proxy.receive_match_state_string!)
+      
+      unless @match_snapshots.last.users_turn_to_act? || @match_snapshots.last.match_ended?
+         update_match_state!
       end
-   end 
-   
-   # @see MatchState#users_turn_to_act?
-   def users_turn_to_act?
-      current_match_state.users_turn_to_act?
    end
 end
