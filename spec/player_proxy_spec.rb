@@ -9,7 +9,9 @@ require 'acpc_poker_types/types/game_definition'
 # Local modules
 require File.expand_path('../support/dealer_data', __FILE__)
 
-describe PlayersAtTheTable do
+require File.expand_path('../../lib/acpc_poker_player_proxy/player_proxy', __FILE__)
+
+describe PlayerProxy do
    include DealerData
    
    # @todo integrate this into the data where its collected
@@ -28,15 +30,11 @@ describe PlayersAtTheTable do
       }
    }
    
-   before(:each) do      
-      port_number = 9001
-      host_name = 'localhost'
-      millisecond_response_timeout = 0
-      @delaer_info = AcpcDealerInformation.new host_name, port_number, millisecond_response_timeout
-      @basic_proxy = mock 'BasicProxy'
-      BasicProxy.stubs(:new).with(@dealer_info).returns(@basic_proxy)
-   end
-   
+   PORT_NUMBER = 9001
+   HOST_NAME = 'localhost'
+   MILLISECOND_RESPONSE_TIMEOUT = 0
+   DEALER_INFO = AcpcDealerInformation.new HOST_NAME, PORT_NUMBER, MILLISECOND_RESPONSE_TIMEOUT
+      
    describe '#update!' do
       it "keeps track of state for a sequence of match states and actions in Doyle's game" do
          # @todo Move into data retrieval method
@@ -51,13 +49,19 @@ describe PlayersAtTheTable do
                   init_before_first_turn_data! num_players, type, users_seat
                   
                   game_def = init_game_def type, @players
+                  GameDefinition.stubs(:new).with(game_def).returns(game_def)
                   
-                  # Initialize patient
-                  @patient = PlayerProxy.new @basic_proxy, users_seat, game_def,
-                     @players.map{ |player| player.name },
+                  @basic_proxy = mock 'BasicProxy'
+                  BasicProxy.stubs(:new).with(DEALER_INFO).returns(@basic_proxy)
+                  
+                  @expected_players_at_the_table = PlayersAtTheTable.seat_players(
+                     @players, users_seat, game_def, GAME_DEFS[type][:number_of_hands]
+                  )
+                  
+                  @patient = PlayerProxy.new DEALER_INFO, users_seat, game_def,
+                     (@players.map{ |player| player.name }).join(' '),
                      GAME_DEFS[type][:number_of_hands]
                   
-                  # Sample the dealer match string and action data
                   turns.each_index do |i|
                      # @todo Won't be needed once data is separated better by game def
                      next if @match_ended
@@ -87,7 +91,7 @@ describe PlayersAtTheTable do
                      if @match_state.first_state_of_first_round?
                         init_new_hand_data! type
                      else
-                        init_new_turn_data! from_player_message
+                        init_new_turn_data! type, from_player_message, prev_round
                      end
                      
                      if @match_state.round != prev_round || @match_state.first_state_of_first_round?
@@ -96,15 +100,26 @@ describe PlayersAtTheTable do
                      end
                      
                      if !next_turn || MatchStateString.parse(next_turn[:to_players]['1']).first_state_of_first_round?
-                        init_hand_result_data! @hand_num
+                        init_hand_result_data! data_by_type, game_def
                      end
+                     
+                     @expected_players_at_the_table.update! @match_state
+                     
+                     next if from_player_message.empty?
+                     
+                     seat_taking_action = from_player_message.keys.first
+                     
+                     next unless seat_taking_action == seat
+                     
+                     action = PokerAction.new from_player_message[seat_taking_action]
+                     
+                     ActionSender.expects(:send_action).once.with(@dealer_communicator, @match_state, action)
                      
                      # @todo Have to rearrange things so the patient takes an
                      #  action and continues to update its state until it may
                      #  take another action.
                      @basic_proxy.expects(:receive_match_state_string!).returns(@match_state)
                      
-                     # Update the patient
                      @patient.play! @action
                      
                      init_after_update_data! type
@@ -136,7 +151,7 @@ describe PlayersAtTheTable do
          hash
       end
    end
-   def init_hand_result_data!
+   def init_hand_result_data!(data_by_type, game_def)
       result = data_by_type[:results][@hand_num]
       @hand_num += 1
       
@@ -161,7 +176,7 @@ describe PlayersAtTheTable do
          @last_hands_balance[player.seat] = @chip_balances[player.seat]
       end
    end
-   def init_new_turn_data!(from_player_message)
+   def init_new_turn_data!(type, from_player_message, prev_round)
       @betting_sequence << [] if @betting_sequence.empty?
       @player_acting_sequence << [] if @player_acting_sequence.empty?
       
@@ -170,12 +185,12 @@ describe PlayersAtTheTable do
       @player_who_acted_last = @players[seat_of_last_player_to_act]
       
       @last_action = PokerAction.new(from_player_message[seat_taking_action],
-         @patient.cost_of_action(@player_who_acted_last,
+         @expected_players_at_the_table.cost_of_action(@player_who_acted_last,
             PokerAction.new(from_player_message[seat_taking_action]),
             (@betting_sequence.length - 1)
          ),
          nil,
-         (@patient.amount_to_call(@player_who_acted_last) > 0 ||
+         (@expected_players_at_the_table.amount_to_call(@player_who_acted_last) > 0 ||
             (GAME_DEFS[type][:blinds][positions_relative_to_dealer[seat_of_last_player_to_act]] > 0 &&
                @player_who_acted_last.actions_taken_this_hand[0].length < 1
             )
@@ -211,14 +226,14 @@ describe PlayersAtTheTable do
       
       init_new_hand_chip_data! type
    end
-   #############
    def init_new_hand_chip_data!(type)
       # @todo Assumes Doyle's Game
       @chip_stacks = @players.each_index.inject([]) { |stacks, j| stacks << GAME_DEFS[type][:stack_size] }
+      @chip_contributions = []
       @chip_stacks.each_index do |j|
          @chip_stacks[j] -= GAME_DEFS[type][:blinds][positions_relative_to_dealer[j]]
          @chip_balances[j] -= GAME_DEFS[type][:blinds][positions_relative_to_dealer[j]].to_i
-         @chip_contributions[j] += GAME_DEFS[type][:blinds][positions_relative_to_dealer[j]].to_i
+         @chip_contributions << [GAME_DEFS[type][:blinds][positions_relative_to_dealer[j]].to_i]
       end 
    end
    def init_before_first_turn_data!(num_players, type, users_seat)
@@ -226,7 +241,7 @@ describe PlayersAtTheTable do
       @last_hands_balance = num_players.times.inject([]) { |balances, i| balances << 0 }
       @players = create_players(type, num_players)
       @chip_balances = @players.map { |player| player.chip_balance.to_i }
-      @chip_contributions = @players.map { |player| player.contribution }
+      @chip_contributions = @players.map { |player| player.chip_contribution }
       @user_player = @players[users_seat]
       @opponents = @players.select { |player| !player.eql?(@user_player) }
    end
@@ -255,13 +270,11 @@ describe PlayersAtTheTable do
       new_list
    end
    def create_players(type, num_players)
-      players = []
-      num_players.times do |i|
+      num_players.times.inject([]) do |players, i|
          name = "p#{i + 1}"
          player_seat = i
          players << Player.join_match(name, player_seat, GAME_DEFS[type][:stack_size])
       end
-      players
    end
    def init_game_def(type, players)
       game_def = mock 'GameDefinition'
@@ -275,8 +288,8 @@ describe PlayersAtTheTable do
    def check_patient
       @patient.player_acting_sequence.should == @player_acting_sequence
       @patient.number_of_players.should == @number_of_players
-      @patient.player_who_acted_last.should be @player_who_acted_last
-      @patient.next_player_to_act.should be @next_player_to_act
+      @patient.player_who_acted_last.should == @player_who_acted_last
+      @patient.next_player_to_act.should == @next_player_to_act
       (@patient.players.map { |player| player.hole_cards }).should == @hole_card_hands
       @patient.user_player.should == @user_player
       @patient.opponents.should == @opponents

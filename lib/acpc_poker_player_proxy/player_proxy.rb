@@ -36,9 +36,15 @@ class PlayerProxy
          GameDefinition.new(game_definition_argument)
       end
       @basic_proxy = BasicProxy.new dealer_information
-      @match_snapshots = [MatchState.new(game_definition, next_match_state_string, player_names.split(/,?\s+/), number_of_hands)]
+      @match_snapshots = [PlayersAtTheTable.seat_players(
+                           Player.create_players(player_names.split(/,?\s+/), game_definition),
+                           users_seat,
+                           game_definition,
+                           number_of_hands
+                          )
+                         ]
       
-      update_match_state! unless users_turn_to_act?
+      update_match_state! unless @match_snapshots.last.users_turn_to_act?
    end
    
    # Player action interface
@@ -63,15 +69,15 @@ class PlayerProxy
    end
    
    def take_match_snapshot
-      first_match_state = @match_snapshots.first
-      match_state = MatchState.new(first_match_state.game_definition,
-                                   first_match_state.match_state_string,
-                                   first_match_state.player_names,
-                                   first_match_state.number_of_hands)      
-      @match_snapshots.rest.each do |previous_match_states|
-         match_state.update! previous_match_states.match_state_string
-      end
-      match_state
+      #first_match_state = @match_snapshots.first
+      #match_state = PlayerProxy.new(first_match_state.game_definition,
+      #                             first_match_state.match_state_string,
+      #                             first_match_state.player_names,
+      #                             first_match_state.number_of_hands)      
+      #@match_snapshots.rest.each do |previous_match_states|
+      #   match_state.update! previous_match_states.match_state_string
+      #end
+      #match_state
    end
    
    def update_match_state!
