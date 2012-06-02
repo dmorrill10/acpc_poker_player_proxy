@@ -22,7 +22,15 @@ class PlayerProxy
    
    # @return [Array<PlayersAtTheTable>] Summary of the progression of the match
    #  in which, this player is participating, since this object's instantiation.
-   attr_reader :match_snapshots
+   attr_reader :players_at_the_table
+      
+   attr_reader :game_def
+   
+   attr_reader :users_seat
+   
+   attr_reader :player_names
+   
+   attr_reader :number_of_hands
    
    # @param [DealerInformation] dealer_information Information about the dealer to which this bot should connect.
    # @param [GameDefinition, #to_s] game_definition_argument A game definition; either a +GameDefinition+ or the name of the file containing a game definition.
@@ -30,46 +38,78 @@ class PlayerProxy
    # @param [Integer] number_of_hands The number of hands in this match.
    def initialize(dealer_information, users_seat, game_definition_argument,
                   player_names='user p2', number_of_hands=1)
-      game_definition = if game_definition_argument.kind_of?(GameDefinition)
+      @game_def = if game_definition_argument.kind_of?(GameDefinition)
          game_definition_argument
       else
          GameDefinition.new(game_definition_argument)
       end
-      @basic_proxy = BasicProxy.new dealer_information
-      @match_snapshots = [PlayersAtTheTable.seat_players(
-                           Player.create_players(player_names.split(/,?\s+/), game_definition),
-                           users_seat,
-                           game_definition,
-                           number_of_hands
-                          )
-                         ]
+      @basic_proxy = BasicProxy.new dealer_information      
       
-      update_match_state! unless @match_snapshots.last.users_turn_to_act?
+      @player_names = player_names.split(/,?\s+/)
+      
+      @users_seat = users_seat
+      
+      @number_of_hands = number_of_hands
+      
+      @players_at_the_table = create_players_at_the_table
+      
+      yield @players_at_the_table
+      
+      
+      unless @players_at_the_table.users_turn_to_act? || @players_at_the_table.match_ended?
+         update_match_state! do |players_at_the_table|
+            yield players_at_the_table
+         end
+      end
    end
    
    # Player action interface
    # @param [PokerAction] action The action to take.
    def play!(action)
-      raise MatchEnded, "Cannot take action #{action} because the match has ended!" if match_ended?
+      if @players_at_the_table.match_ended?
+         raise MatchEnded, "Cannot take action #{action} because the match has ended!"
+      end
       
       @basic_proxy.send_action action
       
-      update_match_state!
+      update_match_state! do |players_at_the_table|
+         yield players_at_the_table
+      end
    end
    
-   def pop_current_match_state
-      @match_snapshots.pop
+   def pop_player_state!
+      @players_at_the_table_snapshots.pop
    end
    
    private
    
    def update_match_state!
-      # @todo Does this work?
-      @match_snapshots << Marshal::load(Marshal.dump(@match_snapshots.last))
-      @match_snapshots.last.update!(@basic_proxy.receive_match_state_string!)
+      puts "pas: #{@players_at_the_table.player_acting_sequence}"
       
-      unless @match_snapshots.last.users_turn_to_act? || @match_snapshots.last.match_ended?
-         update_match_state!
+      match_state = @basic_proxy.receive_match_state_string!
+      @players_at_the_table.update!(match_state)
+      
+      puts "pas: #{@players_at_the_table.player_acting_sequence}"
+      puts "update_match_state!: match_state: #{match_state}"
+      
+      yield @players_at_the_table
+      
+      while !(@players_at_the_table.users_turn_to_act? || @players_at_the_table.match_ended?)
+         match_state = @basic_proxy.receive_match_state_string!
+         @players_at_the_table.update!(match_state)
+         
+         puts "update_match_state!: match_state: #{match_state}"
+         
+         yield @players_at_the_table
       end
+   end
+   
+   def create_players_at_the_table
+      PlayersAtTheTable.seat_players(
+         @game_def,
+         @player_names,
+         @users_seat,
+         @number_of_hands
+      )
    end
 end

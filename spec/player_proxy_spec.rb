@@ -42,6 +42,7 @@ describe PlayerProxy do
             @number_of_players = num_players
             ((0..(num_players-1)).map{ |i| (i+1).to_s }).each do |seat|
                data_by_num_players.each do |type, data_by_type|
+                  @patient = nil
                   @hand_num = 0
                   users_seat = seat.to_i - 1
                   turns = data_by_type[:actions]
@@ -53,14 +54,23 @@ describe PlayerProxy do
                   
                   @basic_proxy = mock 'BasicProxy'
                   BasicProxy.stubs(:new).with(DEALER_INFO).returns(@basic_proxy)
+                     
+                  Player.stubs(:create_players).with(
+                     @players.map{|p| p.name}, game_def
+                  ).returns(@players)
                   
                   @expected_players_at_the_table = PlayersAtTheTable.seat_players(
-                     @players, users_seat, game_def, GAME_DEFS[type][:number_of_hands]
+                     game_def, @players.map{|p| p.name}, users_seat, GAME_DEFS[type][:number_of_hands]
                   )
                   
-                  @patient = PlayerProxy.new DEALER_INFO, users_seat, game_def,
-                     (@players.map{ |player| player.name }).join(' '),
-                     GAME_DEFS[type][:number_of_hands]
+                  players_for_patient = create_players type, num_players
+                  
+                  Player.stubs(:create_players).with(
+                     players_for_patient.map{|p| p.name}, game_def
+                  ).returns(players_for_patient)
+                  
+                  @match_states = []
+                  action = nil
                   
                   turns.each_index do |i|
                      # @todo Won't be needed once data is separated better by game def
@@ -70,7 +80,7 @@ describe PlayerProxy do
                      next_turn = turns[i + 1]
                      from_player_message = turn[:from_players]
                      match_state_string = turn[:to_players][seat]
-                     prev_round = if @match_state then @match_state.round else nil end
+                     prev_round = if @last_match_state then @last_match_state.round else nil end
                      
                      @last_hand = ((GAME_DEFS[type][:number_of_hands] - 1) == @hand_num)
                      
@@ -84,17 +94,20 @@ describe PlayerProxy do
                      else
                         false
                      end
-                     @match_state = MatchStateString.parse match_state_string
-                     @hole_card_hands = order_by_seat_from_dealer_relative @match_state.list_of_hole_card_hands,
-                        users_seat, @match_state.position_relative_to_dealer
                      
-                     if @match_state.first_state_of_first_round?
+                     @match_states << MatchStateString.parse(match_state_string)
+                     @last_match_state = MatchStateString.parse match_state_string
+                     
+                     @hole_card_hands = order_by_seat_from_dealer_relative @match_states.last.list_of_hole_card_hands,
+                        users_seat, @match_states.last.position_relative_to_dealer
+                     
+                     if @match_states.last.first_state_of_first_round?
                         init_new_hand_data! type
                      else
                         init_new_turn_data! type, from_player_message, prev_round
                      end
                      
-                     if @match_state.round != prev_round || @match_state.first_state_of_first_round?
+                     if @match_states.last.round != prev_round || @match_states.last.first_state_of_first_round?
                         @player_acting_sequence << []
                         @betting_sequence << []
                      end
@@ -103,7 +116,32 @@ describe PlayerProxy do
                         init_hand_result_data! data_by_type, game_def
                      end
                      
-                     @expected_players_at_the_table.update! @match_state
+                     puts "@hand_num: #{@hand_num}, number_of_hands: #{(GAME_DEFS[type][:number_of_hands] - 1)}"
+                     
+                     puts "@match_states.last: #{@match_states.last}"
+                     
+                     @expected_players_at_the_table.update! @match_states.last
+                     
+                     init_after_update_data! type
+                     
+                     if @users_turn_to_act || @match_ended
+                        set_match_states_to_return! turns, i
+                        
+                        if !@patient
+                           @patient = PlayerProxy.new(
+                              DEALER_INFO,
+                              users_seat,
+                              game_def,
+                              (@players.map{ |player| player.name }).join(' '),
+                              GAME_DEFS[type][:number_of_hands]
+                           ) { |players_at_the_table| }
+                        elsif action
+                           @patient.play!(action) { |players_at_the_table| puts "pas: #{players_at_the_table.player_acting_sequence}"}
+                           action = nil
+                           
+                           check_patient
+                        end
+                     end
                      
                      next if from_player_message.empty?
                      
@@ -113,18 +151,7 @@ describe PlayerProxy do
                      
                      action = PokerAction.new from_player_message[seat_taking_action]
                      
-                     ActionSender.expects(:send_action).once.with(@dealer_communicator, @match_state, action)
-                     
-                     # @todo Have to rearrange things so the patient takes an
-                     #  action and continues to update its state until it may
-                     #  take another action.
-                     @basic_proxy.expects(:receive_match_state_string!).returns(@match_state)
-                     
-                     @patient.play! @action
-                     
-                     init_after_update_data! type
-                     
-                     check_patient
+                     @basic_proxy.expects(:send_action).with(action)
                   end
                end
             end
@@ -140,6 +167,9 @@ describe PlayerProxy do
       @less_than_two_non_folded_players = @non_folded_players.length < 2
       @hand_ended = @less_than_two_non_folded_players || @reached_showdown
       @match_ended = @hand_ended && @last_hand
+      
+      puts "@match_ended: #{@match_ended}, @hand_ended: #{@hand_ended}, @last_hand: #{@last_hand}"
+      
       @player_with_dealer_button = nil
       @players.each_index do |j|
          if positions_relative_to_dealer[j] == @players.length - 1
@@ -206,14 +236,13 @@ describe PlayerProxy do
       @betting_sequence.last << @last_action
       @betting_sequence_string += @last_action.to_acpc
       
-      if @match_state.round != prev_round
+      if @match_states.last.round != prev_round
          @player_acting_sequence_string += '/'
          @betting_sequence_string += '/'
          @chip_contributions.each do |contribution|
             contribution << 0
          end
       end
-      
    end
    def init_new_hand_data!(type)
       @player_who_acted_last = nil
@@ -248,13 +277,13 @@ describe PlayerProxy do
    def index_of_next_player_to_act(turn) turn[:from_players].keys.first.to_i - 1 end
    def positions_relative_to_dealer
       positions = []
-      @match_state.list_of_hole_card_hands.each_index do |pos_rel_dealer|
+      @match_states.last.list_of_hole_card_hands.each_index do |pos_rel_dealer|
          @hole_card_hands.each_index do |seat|
-            if @hole_card_hands[seat] == @match_state.list_of_hole_card_hands[pos_rel_dealer]
+            if @hole_card_hands[seat] == @match_states.last.list_of_hole_card_hands[pos_rel_dealer]
                positions[seat] = pos_rel_dealer
             end
          end
-         @match_state.list_of_hole_card_hands
+         @match_states.last.list_of_hole_card_hands
       end
       positions
    end
@@ -285,32 +314,51 @@ describe PlayerProxy do
       game_def.stubs(:min_wagers).returns(GAME_DEFS[type][:small_bets])
       game_def
    end
+   def set_match_states_to_return!(turns, current_turn_number)
+      initial_turn_number = current_turn_number - @match_states.length
+      
+      match_state_received = states(
+         'match_state_received'
+      ).starts_as(initial_turn_number)
+      
+      @match_states.length.times do |i|        
+         @basic_proxy.expects(:receive_match_state_string!).returns(
+            @match_states.shift
+         ).when(match_state_received.is(initial_turn_number + i)).then(
+            match_state_received.is(initial_turn_number + i + 1)
+         )
+      end
+   end
    def check_patient
-      @patient.player_acting_sequence.should == @player_acting_sequence
-      @patient.number_of_players.should == @number_of_players
-      @patient.player_who_acted_last.should == @player_who_acted_last
-      @patient.next_player_to_act.should == @next_player_to_act
-      (@patient.players.map { |player| player.hole_cards }).should == @hole_card_hands
-      @patient.user_player.should == @user_player
-      @patient.opponents.should == @opponents
-      @patient.active_players.should == @active_players
-      @patient.non_folded_players.should == @non_folded_players
-      @patient.opponents_cards_visible?.should == @opponents_cards_visible
-      @patient.reached_showdown?.should == @reached_showdown
-      @patient.less_than_two_non_folded_players?.should == @less_than_two_non_folded_players                     
-      @patient.hand_ended?.should == @hand_ended
-      @patient.last_hand?.should == @last_hand
-      @patient.match_ended?.should == @match_ended
-      @patient.player_with_dealer_button.should == @player_with_dealer_button
-      @patient.player_blind_relation.should == @player_blind_relation
-      @patient.player_acting_sequence_string.should == @player_acting_sequence_string
-      @patient.users_turn_to_act?.should == @users_turn_to_act
-      @patient.chip_stacks.should == @chip_stacks
-      @patient.chip_balances.should == @chip_balances
-      @patient.betting_sequence.should == @betting_sequence
-      @patient.betting_sequence_string.should == @betting_sequence_string
-      @patient.chip_contributions.should == @chip_contributions
+      check_players_at_the_table @patient.players_at_the_table
+      
       #@patient.chip_balance_over_hand.should == @chip_balance_over_hand
       #@patient.match_state_string.should == @match_state
+   end
+   def check_players_at_the_table(players_at_the_table)      
+      players_at_the_table.player_acting_sequence.should == @player_acting_sequence
+      players_at_the_table.number_of_players.should == @number_of_players
+      #players_at_the_table.player_who_acted_last.should == @player_who_acted_last
+      #players_at_the_table.next_player_to_act.should == @next_player_to_act
+      #(players_at_the_table.players.map { |player| player.hole_cards }).should == @hole_card_hands
+      #players_at_the_table.user_player.should == @user_player
+      #players_at_the_table.opponents.should == @opponents1
+      #players_at_the_table.active_players.should == @active_players
+      #players_at_the_table.non_folded_players.should == @non_folded_players
+      #players_at_the_table.opponents_cards_visible?.should == @opponents_cards_visible
+      #players_at_the_table.reached_showdown?.should == @reached_showdown
+      #players_at_the_table.less_than_two_non_folded_players?.should == @less_than_two_non_folded_players                     
+      #players_at_the_table.hand_ended?.should == @hand_ended
+      #players_at_the_table.last_hand?.should == @last_hand
+      #players_at_the_table.match_ended?.should == @match_ended
+      #players_at_the_table.player_with_dealer_button.should == @player_with_dealer_button
+      #players_at_the_table.player_blind_relation.should == @player_blind_relation
+      #players_at_the_table.player_acting_sequence_string.should == @player_acting_sequence_string
+      #players_at_the_table.users_turn_to_act?.should == @users_turn_to_act
+      #players_at_the_table.chip_stacks.should == @chip_stacks
+      #players_at_the_table.chip_balances.should == @chip_balances
+      #players_at_the_table.betting_sequence.should == @betting_sequence
+      #players_at_the_table.betting_sequence_string.should == @betting_sequence_string
+      #players_at_the_table.chip_contributions.should == @chip_contributions
    end
 end
