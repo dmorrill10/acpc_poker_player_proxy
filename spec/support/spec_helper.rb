@@ -2,6 +2,7 @@
 require 'simplecov'
 SimpleCov.start
 
+require 'pry'
 require 'mocha'
 
 RSpec.configure do |config|

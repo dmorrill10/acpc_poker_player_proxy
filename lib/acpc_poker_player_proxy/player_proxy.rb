@@ -1,7 +1,4 @@
 
-# @todo Make a good system for copying PATT instances 
-
-
 # Gems
 require 'acpc_poker_types/types/player'
 require 'acpc_poker_types/acpc_poker_types_defs'
@@ -20,7 +17,7 @@ class PlayerProxy
    
    exceptions :match_ended
    
-   # @return [Array<PlayersAtTheTable>] Summary of the progression of the match
+   # @return [PlayersAtTheTable] Summary of the progression of the match
    #  in which, this player is participating, since this object's instantiation.
    attr_reader :players_at_the_table
       
@@ -54,12 +51,9 @@ class PlayerProxy
       @players_at_the_table = create_players_at_the_table
       
       yield @players_at_the_table
-      
-      
-      unless @players_at_the_table.users_turn_to_act? || @players_at_the_table.match_ended?
-         update_match_state! do |players_at_the_table|
-            yield players_at_the_table
-         end
+
+      update_match_state_if_necessary! do |players_at_the_table|
+         yield players_at_the_table
       end
    end
    
@@ -73,34 +67,27 @@ class PlayerProxy
       @basic_proxy.send_action action
       
       update_match_state! do |players_at_the_table|
-         yield players_at_the_table
+         yield @players_at_the_table = players_at_the_table
       end
-   end
-   
-   def pop_player_state!
-      @players_at_the_table_snapshots.pop
    end
    
    private
    
+   def update_match_state_if_necessary!
+      unless @players_at_the_table.users_turn_to_act? || @players_at_the_table.match_ended?
+         update_match_state! do |players_at_the_table|
+            yield players_at_the_table
+         end
+      end
+   end
+   
    def update_match_state!
-      puts "pas: #{@players_at_the_table.player_acting_sequence}"
-      
-      match_state = @basic_proxy.receive_match_state_string!
-      @players_at_the_table.update!(match_state)
-      
-      puts "pas: #{@players_at_the_table.player_acting_sequence}"
-      puts "update_match_state!: match_state: #{match_state}"
+      @players_at_the_table.update!(@basic_proxy.receive_match_state_string!)
       
       yield @players_at_the_table
       
-      while !(@players_at_the_table.users_turn_to_act? || @players_at_the_table.match_ended?)
-         match_state = @basic_proxy.receive_match_state_string!
-         @players_at_the_table.update!(match_state)
-         
-         puts "update_match_state!: match_state: #{match_state}"
-         
-         yield @players_at_the_table
+      update_match_state_if_necessary! do |players_at_the_table|
+         yield players_at_the_table
       end
    end
    
