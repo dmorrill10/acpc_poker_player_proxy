@@ -204,10 +204,10 @@ describe PlayerProxy do
          # @todo Assumes Doyle's game in three player
          if final_balance.to_i == 0
             @chip_balances[player.seat] = @last_hands_balance[player.seat].to_i
-            @chip_contributions[player.seat][-1] -= @chip_contributions[player.seat].sum
+            @chip_contributions[player.seat] << -@chip_contributions[player.seat].sum
          elsif final_balance.to_i > 0
             @chip_balances[player.seat] = @last_hands_balance[player.seat].to_i + final_balance.to_i
-            @chip_contributions[player.seat][-1] -= @chip_contributions.mapped_sum.sum
+            @chip_contributions[player.seat] << -@chip_contributions.mapped_sum.sum
          end
          
          @last_hands_balance[player.seat] = @chip_balances[player.seat]
@@ -350,21 +350,13 @@ describe PlayerProxy do
    def check_players_at_the_table(players_at_the_table)
       players_at_the_table.player_acting_sequence.should == @player_acting_sequence
       players_at_the_table.number_of_players.should == @number_of_players
-      #players_at_the_table.player_who_acted_last.should == @player_who_acted_last
-      #players_at_the_table.next_player_to_act.should == @next_player_to_act
       (players_at_the_table.players.map { |player| player.hole_cards }).should == @hole_card_hands
-      #players_at_the_table.user_player.should == @user_player
-      #players_at_the_table.opponents.should == @opponents
-      #players_at_the_table.active_players.should == @active_players
-      #players_at_the_table.non_folded_players.should == @non_folded_players
       players_at_the_table.opponents_cards_visible?.should == @opponents_cards_visible
       players_at_the_table.reached_showdown?.should == @reached_showdown
       players_at_the_table.less_than_two_non_folded_players?.should == @less_than_two_non_folded_players
       players_at_the_table.hand_ended?.should == @hand_ended
       players_at_the_table.last_hand?.should == @last_hand
       players_at_the_table.match_ended?.should == @match_ended
-      #players_at_the_table.player_with_dealer_button.should == @player_with_dealer_button
-      #players_at_the_table.player_blind_relation.should == @player_blind_relation
       players_at_the_table.player_acting_sequence_string.should == @player_acting_sequence_string
       players_at_the_table.users_turn_to_act?.should == @users_turn_to_act
       players_at_the_table.chip_stacks.should == @chip_stacks
