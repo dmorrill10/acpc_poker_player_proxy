@@ -282,7 +282,7 @@ describe PlayerProxy do
       @last_hands_balance = num_players.times.inject([]) { |balances, i| balances << 0 }
       @players = create_players(type, num_players)
       @chip_balances = @players.map { |player| player.chip_balance.to_i }
-      @chip_contributions = @players.map { |player| player.chip_contribution }
+      @chip_contributions = @players.map { |player| player.chip_contributions }
       @user_player = @players[@users_seat]
       @opponents = @players.select { |player| !player.eql?(@user_player) }
       @hole_card_hands = @players.inject([]) { |hands, player| hands << player.hole_cards }
