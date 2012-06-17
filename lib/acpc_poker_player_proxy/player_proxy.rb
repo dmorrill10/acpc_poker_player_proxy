@@ -1,19 +1,13 @@
 
-# Gems
-require 'acpc_poker_types/types/player'
-require 'acpc_poker_types/acpc_poker_types_defs'
-require 'acpc_poker_types/mixins/utils'
-
-require 'acpc_poker_basic_proxy/basic_proxy'
+require 'dmorrill10-utils'
 
 require 'acpc_poker_match_state/players_at_the_table'
+require 'acpc_poker_types/player'
+require 'acpc_poker_types/game_definition'
+require 'acpc_poker_basic_proxy/basic_proxy'
 
-# Local mixins
-require File.expand_path('../mixins/array_mixin', __FILE__)
-
-# A proxy player for the web poker application.
 class PlayerProxy
-   include AcpcPokerTypesDefs
+   include AcpcPokerTypes
    
    exceptions :match_ended
    
@@ -82,7 +76,7 @@ class PlayerProxy
    end
    
    def update_match_state!
-      @players_at_the_table.update!(@basic_proxy.receive_match_state_string!)
+      @players_at_the_table.update!(@basic_proxy.receive_match_state!)
       
       yield @players_at_the_table
       
