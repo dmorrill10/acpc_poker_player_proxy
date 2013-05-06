@@ -2,38 +2,58 @@
 require 'simplecov'
 SimpleCov.start
 
-require 'mocha'
+require 'mocha/api'
 
 RSpec.configure do |config|
   # == Mock Framework
   config.mock_with :mocha
 end
 
+require 'pry-rescue/rspec'
 
-require 'ruby-prof'
+# @todo This is duplicated from match state gem tests
+# Match log information in dealer_logs
+class MatchLog
+  DEALER_LOG_DIRECTORY = File.expand_path('../dealer_logs', __FILE__)
 
-RSpec.configure do |config|
-  config.before(:all) do
-    unless $started
-      $started = true
-      puts "start profiler for #{described_class}"
+  attr_reader :results_file_name, :actions_file_name, :player_names, :dealer_log_directory
 
-      RubyProf.measure_mode = RubyProf::MEMORY
-
-      RubyProf.start
-    end
+  def initialize(results_file_name, actions_file_name, player_names)
+    @results_file_name = results_file_name
+    @actions_file_name = actions_file_name
+    @player_names = player_names
   end
-  config.after(:all) do
-    if $started
-      puts "stop profiler for #{described_class}"
-      $started = nil
-      FileUtils.mkdir_p File.expand_path("../../profiled_specs", __FILE__)
 
-      result = RubyProf.stop
-
-      File.open File.expand_path("../../profiled_specs/#{described_class}.html", __FILE__), 'w' do |file|
-        RubyProf::GraphHtmlPrinter.new(result).print(file, min_percent: (ENV['MIN_PERCENT'] || 0.1).to_f)
-      end
-    end
+  def actions_file_path
+    "#{DEALER_LOG_DIRECTORY}/#{@actions_file_name}"
   end
+
+  def results_file_path
+    "#{DEALER_LOG_DIRECTORY}/#{@results_file_name}"
+  end
+end
+
+def match_logs
+  [
+    MatchLog.new(
+      '2p.limit.h1000.r0.log',
+      '2p.limit.h1000.r0.actions.log',
+      ['p1', 'p2']
+    ),
+    MatchLog.new(
+      '2p.nolimit.h1000.r0.log',
+      '2p.nolimit.h1000.r0.actions.log',
+      ['p1', 'p2']
+    ),
+    MatchLog.new(
+      '3p.limit.h1000.r0.log',
+      '3p.limit.h1000.r0.actions.log',
+      ['p1', 'p2', 'p3']
+    ),
+    MatchLog.new(
+      '3p.nolimit.h1000.r0.log',
+      '3p.nolimit.h1000.r0.actions.log',
+      ['p1', 'p2', 'p3']
+    )
+  ]
 end
