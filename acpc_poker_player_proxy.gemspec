@@ -11,18 +11,21 @@ Gem::Specification.new do |s|
   s.summary     = %q{ACPC Poker Player Proxy}
   s.description = %q{A smart proxy for a poker player that connects to the ACPC Dealer and manages match state data}
 
-  s.add_dependency 'acpc_poker_match_state'
-  s.add_dependency 'acpc_poker_basic_proxy'
-  s.add_dependency 'acpc_poker_types'
-  s.add_dependency 'dmorrill10-utils'  
-  
+  s.add_dependency 'acpc_poker_match_state', '~> 1.0'
+  s.add_dependency 'acpc_poker_basic_proxy', '~> 1.0'
+  s.add_dependency 'acpc_poker_types', '~> 3.0'
+  s.add_dependency 'dmorrill10-utils', '~> 1.0'
+
   s.rubyforge_project = "acpc_poker_player_proxy"
 
-  s.files         = Dir.glob("lib/**/*") + Dir.glob("ext/**/*") + %w(Rakefile acpc_poker_player_proxy.gemspec tasks.rb README.md)
+  s.files         = Dir.glob("lib/**/*") + Dir.glob("ext/**/*") + %w(Rakefile acpc_poker_player_proxy.gemspec README.md)
   s.test_files    = Dir.glob "spec/**/*"
   s.require_paths = ["lib"]
 
-  s.add_development_dependency 'rspec'
-  s.add_development_dependency 'mocha'
-  s.add_development_dependency 'simplecov'
+  s.add_development_dependency 'turn', '~> 0.9'
+  s.add_development_dependency 'minitest', '~> 4.7'
+  s.add_development_dependency 'acpc_dealer', '~> 0.0'
+  s.add_development_dependency 'awesome_print', '~> 1.0'
+  s.add_development_dependency 'pry-rescue', '~> 1.0'
+  s.add_development_dependency 'simplecov', '~> 0.7'
 end

@@ -1,39 +1,80 @@
-
 require 'simplecov'
 SimpleCov.start
 
-require 'mocha'
+require 'minitest/spec'
+require 'minitest/pride'
+require 'minitest/mock'
+require 'mocha/setup'
 
-RSpec.configure do |config|
-  # == Mock Framework
-  config.mock_with :mocha
+begin
+  require 'turn'
+
+  Turn.config do |c|
+    # use one of output formats:
+    # :outline  - turn's original case/test outline mode [default]
+    # :progress - indicates progress with progress bar
+    # :dotted   - test/unit's traditional dot-progress mode
+    # :pretty   - new pretty reporter
+    # :marshal  - dump output as YAML (normal run mode only)
+    # :cue      - interactive testing
+    c.format  = :dotted
+    # use humanized test names (works only with :outline format)
+    c.natural = true
+  end
+
+  require 'awesome_print'
+  module Minitest::Assertions
+    def mu_pp(obj)
+      obj.awesome_inspect
+    end
+  end
+
+  require 'pry-rescue/minitest'
+rescue LoadError
 end
 
+# Match log information in dealer_logs
+class MatchLog
+  DEALER_LOG_DIRECTORY = File.expand_path('../dealer_logs', __FILE__)
 
-require 'ruby-prof'
+  attr_reader :results_file_name, :actions_file_name, :player_names, :dealer_log_directory
 
-RSpec.configure do |config|
-  config.before(:all) do
-    unless $started
-      $started = true
-      puts "start profiler for #{described_class}"
-
-      RubyProf.measure_mode = RubyProf::MEMORY
-
-      RubyProf.start
-    end
+  def initialize(results_file_name, actions_file_name, player_names)
+    @results_file_name = results_file_name
+    @actions_file_name = actions_file_name
+    @player_names = player_names
   end
-  config.after(:all) do
-    if $started
-      puts "stop profiler for #{described_class}"
-      $started = nil
-      FileUtils.mkdir_p File.expand_path("../../profiled_specs", __FILE__)
 
-      result = RubyProf.stop
-
-      File.open File.expand_path("../../profiled_specs/#{described_class}.html", __FILE__), 'w' do |file|
-        RubyProf::GraphHtmlPrinter.new(result).print(file, min_percent: (ENV['MIN_PERCENT'] || 0.1).to_f)
-      end
-    end
+  def actions_file_path
+    "#{DEALER_LOG_DIRECTORY}/#{@actions_file_name}"
   end
+
+  def results_file_path
+    "#{DEALER_LOG_DIRECTORY}/#{@results_file_name}"
+  end
+end
+
+def match_logs
+  [
+    MatchLog.new(
+      '2p.limit.h1000.r0.log',
+      '2p.limit.h1000.r0.actions.log',
+      ['p1', 'p2']
+    ),
+    MatchLog.new(
+      '2p.nolimit.h1000.r0.log',
+      '2p.nolimit.h1000.r0.actions.log',
+      ['p1', 'p2']
+    ),
+    MatchLog.new(
+      '3p.limit.h1000.r0.log',
+      '3p.limit.h1000.r0.actions.log',
+      ['p1', 'p2', 'p3']
+    ),
+    MatchLog.new(
+      '3p.nolimit.h1000.r0.log',
+      '3p.nolimit.h1000.r0.actions.log',
+      ['p1', 'p2', 'p3']
+    )
+  ]
 end
