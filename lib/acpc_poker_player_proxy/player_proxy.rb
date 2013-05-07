@@ -8,6 +8,8 @@ require 'acpc_poker_basic_proxy/basic_proxy'
 
 class PlayerProxy
   include AcpcPokerTypes
+  include AcpcPokerMatchState
+  include AcpcPokerBasicProxy
 
   exceptions :match_ended
 
