@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'acpc_poker_match_state', '~> 1.0'
   s.add_dependency 'acpc_poker_basic_proxy', '~> 2.0'
   s.add_dependency 'acpc_poker_types', '~> 3.1'
-  s.add_dependency 'dmorrill10-utils', '~> 1.0'
+  s.add_dependency 'contextual_exceptions', '~> 0.0'
 
   s.rubyforge_project = "acpc_poker_player_proxy"
 

@@ -1,12 +1,12 @@
 
-require 'dmorrill10-utils'
+require 'contextual_exceptions'
 
 require 'acpc_poker_match_state/players_at_the_table'
 require 'acpc_poker_types/player'
 require 'acpc_poker_types/game_definition'
 require 'acpc_poker_basic_proxy/basic_proxy'
 
-class PlayerProxy
+class AcpcPokerPlayerProxy::PlayerProxy
   include AcpcPokerTypes
   include AcpcPokerMatchState
   include AcpcPokerBasicProxy
@@ -77,10 +77,10 @@ class PlayerProxy
   private
 
   def update_match_state_if_necessary!
-    unless @players_at_the_table.users_turn_to_act? || @players_at_the_table.match_ended?
-      update_match_state! do |players_at_the_table|
-        yield players_at_the_table
-      end
+    return self if @players_at_the_table.users_turn_to_act? || @players_at_the_table.match_ended?
+
+    update_match_state! do |players_at_the_table|
+      yield players_at_the_table
     end
   end
 
