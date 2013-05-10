@@ -17,14 +17,11 @@ describe PlayerProxy do
   PORT_NUMBER = 9001
   HOST_NAME = 'localhost'
   MILLISECOND_RESPONSE_TIMEOUT = 0
-  DEALER_INFO = AcpcDealerInformation.new HOST_NAME, PORT_NUMBER, MILLISECOND_RESPONSE_TIMEOUT
+  DEALER_INFO = AcpcDealer::ConnectionInformation.new HOST_NAME, PORT_NUMBER, MILLISECOND_RESPONSE_TIMEOUT
 
   describe '#update!' do
     describe "keeps track of state for a sequence of match states and actions in Doyle's game" do
       it 'in no-limit' do
-        @basic_proxy = mock 'BasicProxy'
-        BasicProxy.stubs(:new).with(DEALER_INFO).returns(@basic_proxy)
-
         # Change this number to do more or less thorough tests.
         # Some interesting three player hands occur after 120
         # Careful though, even 10 hands takes about five seconds,
@@ -39,60 +36,73 @@ describe PlayerProxy do
             num_hands
           )
           @match.for_every_seat! do |users_seat|
-            @match.for_every_hand! do
-              @match.current_hand.seat = users_seat
+            @basic_proxy = mock 'BasicProxy'
+            BasicProxy.expects(:new).with(DEALER_INFO).returns(@basic_proxy).once
+            ap "USERS_SEAT: #{users_seat}"
 
-              if @match.hand_number == 0
-                @patient = PlayerProxy.new(
-                  DEALER_INFO,
-                  users_seat,
-                  @match.match_def.game_def,
-                  @match.players.map { |player| player.name }.join(' '),
-                  num_hands
-                ) do |patt|
-                  # Invalidate hand number for initial check of PATT
-                  @match.hand_number = nil unless @match.current_hand.turn_number
+            @patient = PlayerProxy.new(
+              DEALER_INFO,
+              users_seat,
+              @match.match_def.game_def,
+              @match.players.map { |player| player.name }.join(' '),
+              num_hands
+            ) do |patt|
+              check_players_at_the_table patt
 
-                  check_players_at_the_table patt
+              @match.next_hand! unless @match.current_hand
 
-                  # Resume proper hand iteration
-                  @match.hand_number = 0 unless @match.hand_number
+              if @match.current_hand.final_turn?
+ap "Before if final turn?: #{@match.current_hand.turn_number}"
+                @match.current_hand.end_hand!
 
-                  # Iterate over turns
-                  if @match.current_hand.turn_number
-                    @match.current_hand.turn_number += 1
-                  else
-                    @match.current_hand.turn_number = 0
-                  end
-
-                  unless @match.current_hand.next_action.seat == users_seat
-                    @basic_proxy.stubs(:receive_match_state!).returns(
-                      @match.current_hand.current_match_state
-                    )
-                  end
-                end
+                ap "After if final turn?: #{@match.current_hand.turn_number}"
+                break if @match.final_hand?
+                @match.next_hand!
+                # @todo Move this into PMD
+                @match.current_hand.turn_number = nil
+                ap "After after final turn?: #{@match.current_hand.turn_number}"
               end
 
-              while @match.current_hand.turn_number < @match.current_hand.data.length
-                @basic_proxy.expects(:send_action).once.given(
-                  @match.current_hand.next_action.state,
-                  @match.current_hand.next_action.action.to_acpc
-                )
-                @basic_proxy.stubs(:receive_match_state!).returns(
-                  @match.current_hand.current_match_state
-                )
-                @patient.play! @match.current_hand.next_action.action.to_acpc do |patt|
-                  check_players_at_the_table patt
+              ap "TURN NUMBER: #{@match.current_hand.turn_number}"
+              @match.next_turn!
 
-                  @match.current_hand.turn_number += 1
-                  unless @match.current_hand.next_action.seat == users_seat
-                    @basic_proxy.stubs(:receive_match_state!).returns(
-                      @match.current_hand.current_match_state
-                    )
-                  end
+              if @match.current_hand.next_action.seat == users_seat
+                ap 'INITIALIZATION: USER IS ACTING'
+              end
+
+              @basic_proxy.expects(:receive_match_state!).returns(
+                @match.current_hand.current_match_state
+              ).once
+            end
+
+            while @match.current_hand.next_action do
+              @basic_proxy.expects(:send_action).once.with(@match.current_hand.next_action.action.to_acpc)
+              @patient.play! @match.current_hand.next_action.action.to_acpc do |patt|
+                check_players_at_the_table patt
+
+                if @match.current_hand.final_turn?
+ap "Before if final turn?: #{@match.current_hand.turn_number}"
+                  @match.current_hand.end_hand!
+
+                  ap "After if final turn?: #{@match.current_hand.turn_number}"
+                  break if @match.final_hand?
+                  @match.next_hand!
+                  # @todo Move this into PMD
+                  @match.current_hand.turn_number = nil
+                  ap "After after final turn?: #{@match.current_hand.turn_number}"
                 end
+
+                ap "Final turn: #{@match.current_hand.final_turn?}"
+
+                @match.next_turn!
+
+
+                @basic_proxy.expects(:receive_match_state!).returns(
+                  @match.current_hand.current_match_state
+                ).once
               end
             end
+            @match.end_match!
           end
         end
       end
@@ -398,6 +408,14 @@ describe PlayerProxy do
     check_players_at_the_table patient.players_at_the_table
   end
   def check_players_at_the_table(patient)
+
+
+    ap 'PATIENT: ' << patient.player_acting_sequence.join(", ")
+    ap '    HAND ENDED: ' << patient.hand_ended?.to_s
+    ap 'MATCH: ' << "#{@match.current_hand.current_match_state}" if @match.current_hand && @match.current_hand.current_match_state
+    ap '    HAND ENDED: ' << @match.current_hand.final_turn?.to_s if @match.current_hand
+
+
     patient.player_acting_sequence.must_equal @match.player_acting_sequence
     patient.number_of_players.must_equal @match.players.length
     check_last_action patient
