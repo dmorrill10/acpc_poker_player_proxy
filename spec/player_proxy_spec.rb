@@ -27,7 +27,7 @@ describe PlayerProxy do
         # Some interesting three player hands occur after 120
         # Careful though, even 10 hands takes about 7 seconds,
         # and it scales more than linearly
-        num_hands = 20
+        num_hands = 10
         each_match(num_hands) do |match|
           @match = match
           @match.for_every_seat! do |users_seat|
