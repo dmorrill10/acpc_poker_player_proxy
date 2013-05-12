@@ -186,7 +186,7 @@ describe PlayerProxy do
     check_player_blind_relation patient
     patient.chip_stacks.must_equal @match.chip_stacks
     patient.chip_balances.must_equal @match.chip_balances
-    patient.chip_contributions.sum.must_equal @match.chip_contributions.sum
+    patient.chip_contributions.flatten.inject(:+).must_equal @match.chip_contributions.flatten.inject(:+)
   end
 end
 

@@ -1,10 +1,10 @@
-
-require 'contextual_exceptions'
-
 require 'acpc_poker_match_state/players_at_the_table'
 require 'acpc_poker_types/player'
 require 'acpc_poker_types/game_definition'
 require 'acpc_poker_basic_proxy/basic_proxy'
+
+require 'contextual_exceptions'
+using ContextualExceptions::ClassRefinement
 
 module AcpcPokerPlayerProxy
   class PlayerProxy
