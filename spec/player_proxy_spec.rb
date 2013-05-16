@@ -11,7 +11,6 @@ require 'acpc_poker_player_proxy/player_proxy'
 include AcpcPokerTypes
 include AcpcDealerData
 include AcpcPokerBasicProxy
-include CommunicationLogic
 include AcpcPokerPlayerProxy
 
 describe PlayerProxy do
