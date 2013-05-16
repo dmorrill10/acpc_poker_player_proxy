@@ -3,6 +3,7 @@
 require 'optparse'
 require 'methadone'
 require 'acpc_dealer'
+require 'acpc_poker_types/game_definition'
 require 'acpc_poker_player_proxy'
 
 class App
@@ -10,6 +11,11 @@ class App
   include Methadone::CLILogging
 
   main do |port, seat, game_definition, player_names, number_of_hands, host|
+    game_def = AcpcPokerTypes::GameDefinition.parse_file(game_definition)
+
+    player_names ||= '"' << game_def.number_of_players.times.map do |i|
+      "p#{i}"
+    end.join(' ') << '"'
     proxy = AcpcPokerPlayerProxy::PlayerProxy.new(
       AcpcDealer::ConnectionInformation.new(port, host),
       seat.to_i - 1,
