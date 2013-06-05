@@ -11,9 +11,9 @@ Gem::Specification.new do |s|
   s.summary     = %q{ACPC Poker Player Proxy}
   s.description = %q{A smart proxy for a poker player that connects to the ACPC Dealer and manages match state data}
 
-  s.add_dependency 'acpc_poker_match_state', '~> 1.0'
+  s.add_dependency 'acpc_poker_match_state', '~> 2.0'
   s.add_dependency 'acpc_poker_basic_proxy', '~> 3.0'
-  s.add_dependency 'acpc_poker_types', '~> 3.2'
+  s.add_dependency 'acpc_poker_types', '~> 5.0'
   s.add_dependency 'contextual_exceptions', '~> 0.0'
   s.add_dependency 'methadone', '~> 1.2'
   s.add_dependency 'acpc_dealer', '~> 1.0'

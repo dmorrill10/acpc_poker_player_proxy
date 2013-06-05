@@ -104,7 +104,7 @@ describe PlayerProxy do
 
   def check_players_at_the_table(patient)
     patient.player_acting_sequence.must_equal @match.player_acting_sequence
-    patient.number_of_players.must_equal @match.players.length
+    patient.players.length.must_equal @match.players.length
     check_last_action patient
     check_next_to_act patient
     check_last_turn patient
