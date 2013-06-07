@@ -16,8 +16,7 @@ include AcpcPokerPlayerProxy
 describe PlayerProxy do
   PORT_NUMBER = 9001
   HOST_NAME = 'localhost'
-  MILLISECOND_RESPONSE_TIMEOUT = 0
-  DEALER_INFO = AcpcDealer::ConnectionInformation.new HOST_NAME, PORT_NUMBER, MILLISECOND_RESPONSE_TIMEOUT
+  DEALER_INFO = AcpcDealer::ConnectionInformation.new HOST_NAME, PORT_NUMBER
 
   describe '#update!' do
     describe "keeps track of state for a sequence of match states and actions in Doyle's game" do
