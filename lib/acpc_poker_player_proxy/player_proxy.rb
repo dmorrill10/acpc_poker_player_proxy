@@ -64,7 +64,7 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
     begin
       @basic_proxy.send_action action
     rescue AcpcPokerBasicProxy::DealerStream::UnableToWriteToDealer => e
-      raise MatchEnded.new.with_context(
+      raise MatchEnded.with_context(
         "Cannot take action #{action} because the match has ended!",
         e
       )
