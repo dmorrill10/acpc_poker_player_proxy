@@ -11,9 +11,8 @@ Gem::Specification.new do |s|
   s.summary     = %q{ACPC Poker Player Proxy}
   s.description = %q{A smart proxy for a poker player that connects to the ACPC Dealer and manages match state data}
 
-  s.add_dependency 'acpc_poker_match_state', '~> 2.0'
   s.add_dependency 'acpc_poker_basic_proxy', '~> 3.0'
-  s.add_dependency 'acpc_poker_types', '~> 5.0'
+  s.add_dependency 'acpc_poker_types', '~> 7.0'
   s.add_dependency 'contextual_exceptions', '~> 0.0'
   s.add_dependency 'methadone', '~> 1.2'
   s.add_dependency 'acpc_dealer', '~> 2.0'
@@ -25,10 +24,9 @@ Gem::Specification.new do |s|
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
   s.require_paths = ["lib"]
 
-  s.add_development_dependency 'turn', '~> 0.9'
-  s.add_development_dependency 'minitest', '~> 4.7'
+  s.add_development_dependency 'minitest', '~> 5.0.6'
+  s.add_development_dependency 'mocha', '~> 0.13'
   s.add_development_dependency 'awesome_print', '~> 1.0'
   s.add_development_dependency 'pry-rescue', '~> 1.0'
   s.add_development_dependency 'simplecov', '~> 0.7'
-  s.add_development_dependency 'mocha', '~> 0.13'
 end
