@@ -1,6 +1,7 @@
 require_relative 'support/spec_helper'
 
 require 'acpc_poker_types/player'
+require 'acpc_poker_types/match_state'
 require 'acpc_poker_basic_proxy'
 require 'acpc_poker_types/game_definition'
 
@@ -19,6 +20,43 @@ describe PlayerProxy do
   DEALER_INFO = AcpcDealer::ConnectionInformation.new PORT_NUMBER, HOST_NAME
 
   describe '#update!' do
+    it 'does not return too early on pre-flop all-in' do
+      game_def_file = AcpcDealer::GAME_DEFINITION_FILE_PATHS[2][:nolimit]
+      x_states = [
+        'MATCHSTATE:0:0:c:JhJs|',
+        'MATCHSTATE:0:0:cr20000:JhJs|',
+        'MATCHSTATE:0:0:cr20000c///:JhJs|7d2c/7hQsAd/Jd/4c',
+        'MATCHSTATE:1:1::|TcQd'
+      ].map! { |s| MatchState.parse(s) }
+      action = 'r20000'
+
+      @basic_proxy = init_basic_proxy
+
+      states_recieved = []
+      states_to_send = x_states.dup
+      @basic_proxy.expects(:receive_match_state!).returns(
+        states_to_send.shift
+      ).once
+      patient = PlayerProxy.new(DEALER_INFO, game_def_file, 0)
+
+      states_recieved << patient.match_state
+
+      @basic_proxy.expects(:send_action).once.with(action)
+
+      @basic_proxy.expects(:receive_match_state!).returns(
+        states_to_send.shift
+      ).once
+
+      patient.play!(action) do |patt|
+        @basic_proxy.expects(:receive_match_state!).returns(
+          states_to_send.shift
+        ).once unless states_to_send.empty?
+
+        states_recieved << patt.match_state
+      end
+
+      states_recieved.must_equal x_states
+    end
     describe "keeps track of state for a sequence of match states and actions in Doyle's game" do
       it 'in no-limit' do
         # Change this number to do more or less thorough tests.
