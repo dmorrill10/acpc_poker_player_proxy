@@ -24,14 +24,18 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
 
   attr_reader :game_def
 
+  attr_reader :must_send_ready
+
   # @param [DealerInformation] dealer_information Information about the dealer to which this bot should connect.
   # @param [GameDefinition, #to_s] game_definition_argument A game definition; either a +GameDefinition+ or the name of the file containing a game definition.
 
   def initialize(
     dealer_information,
     game_definition_argument,
-    users_seat = nil
+    users_seat = nil,
+    must_send_ready = false
   )
+    @must_send_ready = must_send_ready
     game_def = if game_definition_argument.kind_of?(
       GameDefinition
     )
@@ -81,10 +85,31 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
     @match_has_ended
   end
 
+  def next_hand!
+    begin
+      @basic_proxy.send_ready
+    rescue AcpcPokerBasicProxy::DealerStream::UnableToWriteToDealer => e
+      raise MatchEnded.with_context(
+        "Cannot take action #{action} because the match has ended!",
+        e
+      )
+    end
+
+    update_match_state! do |players_at_the_table|
+      __setobj__ @players_at_the_table = players_at_the_table
+
+      yield @players_at_the_table if block_given?
+    end
+  end
+
   private
 
   def update_match_state_if_necessary!
-    return self if @players_at_the_table.users_turn_to_act? || match_ended?
+    return self if (
+      @players_at_the_table.users_turn_to_act? ||
+      match_ended? ||
+      (@must_send_ready && @players_at_the_table.hand_ended?)
+    )
 
     update_match_state! do |players_at_the_table|
       yield players_at_the_table if block_given?
