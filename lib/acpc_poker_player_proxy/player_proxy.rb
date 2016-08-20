@@ -89,16 +89,15 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
     begin
       @basic_proxy.send_ready
     rescue AcpcPokerBasicProxy::DealerStream::UnableToWriteToDealer => e
-      raise MatchEnded.with_context(
-        "Cannot take action #{action} because the match has ended!",
-        e
-      )
+      raise MatchEnded.with_context("Cannot send ready message!", e)
     end
 
-    update_match_state! do |players_at_the_table|
-      __setobj__ @players_at_the_table = players_at_the_table
+    if @must_send_ready
+      update_match_state! do |players_at_the_table|
+        __setobj__ @players_at_the_table = players_at_the_table
 
-      yield @players_at_the_table if block_given?
+        yield @players_at_the_table if block_given?
+      end
     end
   end
 
