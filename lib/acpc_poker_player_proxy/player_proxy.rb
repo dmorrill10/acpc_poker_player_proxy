@@ -81,14 +81,13 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
     end
   end
 
-  def match_ended?
-    @match_has_ended
-  end
+  def match_ended?() @match_has_ended end
 
   def next_hand!
     begin
       @basic_proxy.send_ready
     rescue AcpcPokerBasicProxy::DealerStream::UnableToWriteToDealer => e
+      @match_has_ended = true
       raise MatchEnded.with_context("Cannot send ready message!", e)
     end
 
@@ -117,7 +116,8 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
 
   def update_match_state!
     begin
-      yield @players_at_the_table.update!(@basic_proxy.receive_match_state!) if block_given?
+      result = @players_at_the_table.update!(@basic_proxy.receive_match_state!)
+      yield result if block_given?
     rescue AcpcPokerBasicProxy::DealerStream::UnableToGetFromDealer
       @match_has_ended = true
     end
