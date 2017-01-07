@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'acpc_poker_types', '~> 7.0'
   s.add_dependency 'contextual_exceptions', '~> 0.0'
   s.add_dependency 'methadone', '~> 1.2'
-  s.add_dependency 'acpc_dealer', '~> 2'
+  s.add_dependency 'acpc_dealer', '~> 3'
 
   s.rubyforge_project = "acpc_poker_player_proxy"
 
