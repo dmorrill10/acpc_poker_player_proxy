@@ -67,7 +67,6 @@ describe PlayerProxy do
         each_match(num_hands) do |match|
           @match = match
           @match.for_every_seat! do |users_seat|
-
             @basic_proxy = init_basic_proxy
 
             @patient = PlayerProxy.new(DEALER_INFO, @match.match_def.game_def, users_seat) do |patt|
@@ -108,7 +107,6 @@ describe PlayerProxy do
                 ).once
               end
             end
-
             @match.hand_number.must_equal(num_hands - 1)
             @match.current_hand.end_hand!
             @match.end_match!
@@ -129,7 +127,7 @@ describe PlayerProxy do
     end
   end
   def init_basic_proxy
-    @basic_proxy = mock 'BasicProxy'
+    @basic_proxy = mock('BasicProxy') { stubs :send_comment }
     BasicProxy.expects(:new).with(DEALER_INFO).returns(@basic_proxy).once
     @basic_proxy
   end
