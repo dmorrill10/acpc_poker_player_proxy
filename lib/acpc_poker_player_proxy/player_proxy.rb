@@ -50,16 +50,12 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
     else
       PlayersAtTheTable.seat_players game_def
     end
+    super @players_at_the_table
 
     @match_has_ended = false
 
-    yield @players_at_the_table if block_given?
-
-    update_match_state_if_necessary! do |players_at_the_table|
-      yield players_at_the_table if block_given?
-    end
-
-    super @players_at_the_table
+    yield self if block_given?
+    update_match_state_if_necessary! { yield self if block_given? }
   end
 
   # Player action interface
@@ -73,12 +69,7 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
         e
       )
     end
-
-    update_match_state! do |players_at_the_table|
-      __setobj__ @players_at_the_table = players_at_the_table
-
-      yield @players_at_the_table if block_given?
-    end
+    update_match_state! { yield self if block_given? }
   end
 
   def match_ended?(max_num_hands = nil)
@@ -93,19 +84,14 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
   end
 
   def next_hand!
-    begin
-      @basic_proxy.send_ready
-    rescue AcpcPokerBasicProxy::DealerStream::UnableToWriteToDealer => e
-      @match_has_ended = true
-      raise MatchEnded.with_context("Cannot send ready message!", e)
-    end
-
     if @must_send_ready
-      update_match_state! do |players_at_the_table|
-        __setobj__ @players_at_the_table = players_at_the_table
-
-        yield @players_at_the_table if block_given?
+      begin
+        @basic_proxy.send_ready
+      rescue AcpcPokerBasicProxy::DealerStream::UnableToWriteToDealer => e
+        @match_has_ended = true
+        raise MatchEnded.with_context("Cannot send ready message!", e)
       end
+      update_match_state! { yield self if block_given? }
     end
   end
 
@@ -120,7 +106,6 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
     end
   end
 
-
   private
 
   def update_match_state_if_necessary!
@@ -130,9 +115,7 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
       (@must_send_ready && @players_at_the_table.hand_ended?)
     )
 
-    update_match_state! do |players_at_the_table|
-      yield players_at_the_table if block_given?
-    end
+    update_match_state! { yield if block_given? }
   end
 
   def update_match_state!
@@ -142,10 +125,9 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
     rescue AcpcPokerBasicProxy::DealerStream::UnableToGetFromDealer
       @match_has_ended = true
     end
+    __setobj__ @players_at_the_table
 
-    update_match_state_if_necessary! do |players_at_the_table|
-      yield players_at_the_table if block_given?
-    end
+    update_match_state_if_necessary! { yield if block_given? }
   end
 end
 end
