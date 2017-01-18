@@ -97,7 +97,7 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
 
   def connected?
     begin
-      @basic_proxy.send_comment '# KA'
+      @basic_proxy.send_comment 'KA'
     rescue AcpcPokerBasicProxy::DealerStream::UnableToWriteToDealer
       @match_has_ended = true
       false
