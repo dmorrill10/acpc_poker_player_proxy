@@ -74,19 +74,7 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
 
   def match_ended?(max_num_hands = nil)
     @match_has_ended ||= (
-      (
-        max_num_hands &&
-        hand_ended? &&
-        match_state.hand_number >= max_num_hands - 1
-      ) ||
-      (
-        match_state && match_state.stack_sizes && (
-          players.any? do |player|
-            !((player.stack + player.winnings.to_f) > 0)
-          end
-        )
-      ) ||
-      !connected?
+      @players_at_the_table.match_ended?(max_num_hands) || !connected?
     )
   end
 
