@@ -20,10 +20,6 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
   #  in which, this player is participating, since this object's instantiation.
   attr_reader :players_at_the_table
 
-  attr_reader :match_has_ended
-
-  attr_reader :game_def
-
   attr_reader :must_send_ready
 
   # @param [DealerInformation] dealer_information Information about the dealer to which this bot should connect.
@@ -115,12 +111,12 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
 
   def update_match_state!
     begin
-      result = @players_at_the_table.update!(@basic_proxy.receive_match_state!)
-      yield result if block_given?
+      @players_at_the_table.update!(@basic_proxy.receive_match_state!)
     rescue AcpcPokerBasicProxy::DealerStream::UnableToGetFromDealer
       @match_has_ended = true
     end
     __setobj__ @players_at_the_table
+    yield if block_given?
 
     update_match_state_if_necessary! { yield if block_given? }
   end
