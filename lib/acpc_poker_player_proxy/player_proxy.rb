@@ -48,7 +48,7 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
     end
     super @players_at_the_table
 
-    @match_has_ended = false
+    @dealer_died = false
 
     yield self if block_given?
     update_match_state_if_necessary! { yield self if block_given? }
@@ -69,8 +69,9 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
   end
 
   def match_ended?(max_num_hands = nil)
-    @match_has_ended ||= (
-      @players_at_the_table.match_ended?(max_num_hands) || !connected?
+    (
+      @players_at_the_table.match_ended?(max_num_hands) ||
+      (@dealer_died && !connected)
     )
   end
 
@@ -79,7 +80,6 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
       begin
         @basic_proxy.send_ready
       rescue AcpcPokerBasicProxy::DealerStream::UnableToWriteToDealer => e
-        @match_has_ended = true
         raise MatchEnded.with_context("Cannot send ready message!", e)
       end
       update_match_state! { yield self if block_given? }
@@ -90,7 +90,6 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
     begin
       @basic_proxy.send_comment 'KA'
     rescue AcpcPokerBasicProxy::DealerStream::UnableToWriteToDealer
-      @match_has_ended = true
       false
     else
       true
@@ -113,7 +112,7 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
     begin
       @players_at_the_table.update!(@basic_proxy.receive_match_state!)
     rescue AcpcPokerBasicProxy::DealerStream::UnableToGetFromDealer
-      @match_has_ended = true
+      @dealer_died = true
     end
     __setobj__ @players_at_the_table
     yield if block_given?
