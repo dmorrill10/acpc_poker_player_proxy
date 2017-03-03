@@ -57,15 +57,17 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
   # Player action interface
   # @param [PokerAction] action The action to take.
   def play!(action)
-    begin
-      @basic_proxy.send_action action
-    rescue AcpcPokerBasicProxy::DealerStream::UnableToWriteToDealer => e
-      raise MatchEnded.with_context(
-        "Cannot take action #{action} because the match has ended!",
-        e
-      )
+    if users_turn_to_act?
+      begin
+        @basic_proxy.send_action action
+      rescue AcpcPokerBasicProxy::DealerStream::UnableToWriteToDealer => e
+        raise MatchEnded.with_context(
+          "Cannot take action #{action} because the match has ended!",
+          e
+        )
+      end
+      update_match_state! { yield self if block_given? }
     end
-    update_match_state! { yield self if block_given? }
   end
 
   def match_ended?(max_num_hands = nil)
@@ -76,7 +78,7 @@ class PlayerProxy < DelegateClass(AcpcPokerTypes::PlayersAtTheTable)
   end
 
   def next_hand!
-    if @must_send_ready
+    if @must_send_ready && hand_ended?
       begin
         @basic_proxy.send_ready
       rescue AcpcPokerBasicProxy::DealerStream::UnableToWriteToDealer => e
